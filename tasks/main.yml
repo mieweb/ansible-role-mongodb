@@ -15,6 +15,34 @@
     state: present
     update_cache: yes
 
+- name: Generate MongoDB keyFile (only on first host in replicaset group)
+  ansible.builtin.command: openssl rand -base64 756
+  when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+  register: keyfile_content
+  changed_when: keyfile_content.stdout != ''
+
+- name: Set fact for keyFile content (only on first host)
+  set_fact:
+    mongodb_keyfile_content: "{{ keyfile_content.stdout }}"
+  when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+
+- name: Fetch keyFile from first host
+  ansible.builtin.fetch:
+    src: "{{ mongodb_keyfile_path }}"
+    dest: "/tmp/mongodb.keyfile"
+    flat: yes
+  when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+  ignore_errors: yes
+
+- name: Distribute keyFile to all hosts in replicaset group
+  ansible.builtin.copy:
+    content: "{{ hostvars[(groups['replicaset_' + mongodb_replicaset_name] | sort)[0]].mongodb_keyfile_content | default('') }}"
+    dest: "{{ mongodb_keyfile_path }}"
+    owner: mongodb
+    group: mongodb
+    mode: '0400'
+  when: hostvars[(groups['replicaset_' + mongodb_replicaset_name] | sort)[0]].mongodb_keyfile_content is defined
+
 - name: Configure mongod.conf
   ansible.builtin.template:
     src: mongod.conf.j2
