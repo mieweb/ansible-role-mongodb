@@ -1,8 +1,6 @@
 # mongod.conf
 storage:
   dbPath: {{ mongodb_data_dir }}
-  journal:
-    enabled: true
   wiredTiger:
     engineConfig:
       cacheSizeGB: {{ (ansible_memtotal_mb | int * 0.5 / 1024) | round(2) }}
