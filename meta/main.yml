@@ -5,7 +5,7 @@ galaxy_info:
   description: Install and configure MongoDB replicaset on Debian
   company: Medical Informatics Engineering, Inc.
   license: MIT
-  min_ansible_version: 2.9
+  min_ansible_version: "2.9"
   platforms:
     - name: Debian
       versions:

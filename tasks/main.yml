@@ -16,10 +16,10 @@
       - mongodb-org
       - mongodb-org-shell
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Group hosts by replicaset name
-  group_by:
+  ansible.builtin.group_by:
     key: "replicaset_{{ mongodb_replicaset_name }}"
 
 - name: Generate MongoDB keyFile (only on first host in replicaset group)
@@ -29,7 +29,7 @@
   changed_when: keyfile_content.stdout != ''
 
 - name: Set fact for keyFile content (only on first host)
-  set_fact:
+  ansible.builtin.set_fact:
     mongodb_keyfile_content: "{{ keyfile_content.stdout }}"
   when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
 
@@ -37,9 +37,9 @@
   ansible.builtin.fetch:
     src: "{{ mongodb_keyfile_path }}"
     dest: "/tmp/mongodb.keyfile"
-    flat: yes
+    flat: true
   when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
-  ignore_errors: yes
+  failed_when: false
 
 - name: Distribute keyFile to all hosts in replicaset group
   ansible.builtin.copy:
@@ -56,21 +56,21 @@
     dest: "{{ mongodb_conf_file }}"
     owner: root
     group: root
-    mode: 0644
+    mode: '0644'
   register: mongod_conf_result
 
 - name: Restart mongod immediately if configuration changed
   ansible.builtin.service:
     name: mongod
     state: restarted
-    enabled: yes
+    enabled: true
   when: mongod_conf_result.changed
 
 - name: Ensure MongoDB is started and enabled
   ansible.builtin.service:
     name: mongod
     state: started
-    enabled: yes
+    enabled: true
 
 - name: Wait for MongoDB to be up
   ansible.builtin.wait_for:
