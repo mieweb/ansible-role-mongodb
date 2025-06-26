@@ -11,7 +11,9 @@
 
 - name: Install MongoDB packages
   ansible.builtin.apt:
-    name: mongodb-org
+    name:
+      - mongodb-org
+      - mongodb-org-shell
     state: present
     update_cache: yes
 
