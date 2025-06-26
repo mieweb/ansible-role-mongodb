@@ -15,6 +15,10 @@
     state: present
     update_cache: yes
 
+- name: Group hosts by replicaset name
+  group_by:
+    key: "replicaset_{{ mongodb_replicaset_name }}"
+
 - name: Generate MongoDB keyFile (only on first host in replicaset group)
   ansible.builtin.command: openssl rand -base64 756
   when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
@@ -71,10 +75,6 @@
     host: "{{ inventory_hostname }}"
     delay: 5
     timeout: 60
-
-- name: Group hosts by replicaset name
-  group_by:
-    key: "replicaset_{{ mongodb_replicaset_name }}"
 
 # Only run on the first host in each replicaset group
 - name: Initiate replicaset (only on first member of each group)
