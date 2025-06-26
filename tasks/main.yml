@@ -81,7 +81,7 @@
 # Only run on the first host in each replicaset group
 - name: Initiate replicaset (only on first member of each group)
   ansible.builtin.command: |
-    mongo --eval 'rs.initiate({_id: "{{ mongodb_replicaset_name }}", members: [ {% for host in groups['replicaset_' + mongodb_replicaset_name] %}{ _id: {{ loop.index0 }}, host: "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ mongodb_port }}" }{% if not loop.last %}, {% endif %}{% endfor %} ] })'
+    mongosh --eval 'rs.initiate({_id: "{{ mongodb_replicaset_name }}", members: [ {% for host in groups['replicaset_' + mongodb_replicaset_name] %}{ _id: {{ loop.index0 }}, host: "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ mongodb_port }}" }{% if not loop.last %}, {% endif %}{% endfor %} ] })'
   when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
   register: rs_initiate
   changed_when: rs_initiate.rc == 0
@@ -89,7 +89,7 @@
 
 - name: Create MongoDB admin user (only on first member, after replica set is initiated)
   ansible.builtin.command: |
-    mongo admin --eval 'db.createUser({user: "{{ mongodb_admin_user }}", pwd: "{{ mongodb_admin_password }}", roles:[{role:"root",db:"admin"}]})'
+    mongosh admin --eval 'db.createUser({user: "{{ mongodb_admin_user }}", pwd: "{{ mongodb_admin_password }}", roles:[{role:"root",db:"admin"}]})'
   when:
     - inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
     - rs_initiate is succeeded
