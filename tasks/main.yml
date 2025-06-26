@@ -15,12 +15,6 @@
     state: present
     update_cache: yes
 
-- name: Ensure MongoDB is started and enabled
-  ansible.builtin.service:
-    name: mongod
-    state: started
-    enabled: yes
-
 - name: Configure mongod.conf
   ansible.builtin.template:
     src: mongod.conf.j2
@@ -28,7 +22,20 @@
     owner: root
     group: root
     mode: 0644
-  notify: restart mongod
+  register: mongod_conf_result
+
+- name: Restart mongod immediately if configuration changed
+  ansible.builtin.service:
+    name: mongod
+    state: restarted
+    enabled: yes
+  when: mongod_conf_result.changed
+
+- name: Ensure MongoDB is started and enabled
+  ansible.builtin.service:
+    name: mongod
+    state: started
+    enabled: yes
 
 - name: Wait for MongoDB to be up
   ansible.builtin.wait_for:
