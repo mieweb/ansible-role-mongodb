@@ -1,12 +1,13 @@
 ---
-- name: Add MongoDB APT key
-  ansible.builtin.apt_key:
+- name: Download MongoDB APT key
+  ansible.builtin.get_url:
     url: https://pgp.mongodb.com/server-{{ mongodb_version }}.asc
-    state: present
+    dest: /usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg
+    mode: '0644'
 
 - name: Add MongoDB repository
   ansible.builtin.apt_repository:
-    repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/debian {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version }} main"
+    repo: "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg ] https://repo.mongodb.org/apt/debian {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version }} main"
     state: present
 
 - name: Install MongoDB packages
