@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: mongodb
+  author: Robert Gingras <rgingras@mieweb.com>
+  description: Install and configure MongoDB replicaset on Debian
+  company: Medical Informatics Engineering, Inc.
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - buster
+        - bullseye
+  galaxy_tags:
+    - mongodb
+    - replicaset
+    - database
+    - debian
+
+dependencies: []

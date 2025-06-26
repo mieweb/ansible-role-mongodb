@@ -1,0 +1,61 @@
+---
+- name: Add MongoDB APT key
+  ansible.builtin.apt_key:
+    url: https://pgp.mongodb.com/server-{{ mongodb_version }}.asc
+    state: present
+
+- name: Add MongoDB repository
+  ansible.builtin.apt_repository:
+    repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/debian {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version }} main"
+    state: present
+
+- name: Install MongoDB packages
+  ansible.builtin.apt:
+    name: mongodb-org
+    state: present
+    update_cache: yes
+
+- name: Ensure MongoDB is started and enabled
+  ansible.builtin.service:
+    name: mongod
+    state: started
+    enabled: yes
+
+- name: Configure mongod.conf
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: "{{ mongodb_conf_file }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart mongod
+
+- name: Wait for MongoDB to be up
+  ansible.builtin.wait_for:
+    port: "{{ mongodb_port }}"
+    host: "{{ inventory_hostname }}"
+    delay: 5
+    timeout: 60
+
+- name: Group hosts by replicaset name
+  group_by:
+    key: "replicaset_{{ mongodb_replicaset_name }}"
+
+# Only run on the first host in each replicaset group
+- name: Initiate replicaset (only on first member of each group)
+  ansible.builtin.command: |
+    mongo --eval 'rs.initiate({_id: "{{ mongodb_replicaset_name }}", members: [ {% for host in groups['replicaset_' + mongodb_replicaset_name] %}{ _id: {{ loop.index0 }}, host: "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ mongodb_port }}" }{% if not loop.last %}, {% endif %}{% endfor %} ] })'
+  when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+  register: rs_initiate
+  changed_when: rs_initiate.rc == 0
+  failed_when: rs_initiate.rc != 0 and 'already initialized' not in rs_initiate.stderr
+
+- name: Create MongoDB admin user (only on first member, after replica set is initiated)
+  ansible.builtin.command: |
+    mongo admin --eval 'db.createUser({user: "{{ mongodb_admin_user }}", pwd: "{{ mongodb_admin_password }}", roles:[{role:"root",db:"admin"}]})'
+  when:
+    - inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+    - rs_initiate is succeeded
+  register: create_admin
+  changed_when: create_admin.rc == 0
+  failed_when: create_admin.rc != 0 and 'already exists' not in create_admin.stderr
