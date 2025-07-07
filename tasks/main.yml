@@ -96,11 +96,28 @@
   changed_when: rs_initiate.rc == 0
   failed_when: rs_initiate.rc != 0 and 'already initialized' not in rs_initiate.stderr
 
-- name: Create MongoDB admin user (only on first member, after replica set is initiated)
+- name: Wait for a primary to be elected (only on first member)
+  ansible.builtin.command: |
+    mongosh --quiet --eval 'JSON.stringify(rs.isMaster())'
+  register: rs_status
+  until: rs_status.stdout is search('"ismaster"\s*:\s*true')
+  retries: 20
+  delay: 3
+  when: inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+  changed_when: false
+
+- name: Set fact if this host is primary (only on first member)
+  ansible.builtin.set_fact:
+    is_mongo_primary: true
+  when:
+    - inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+    - rs_status.stdout is search('"ismaster"\s*:\s*true')
+
+- name: Create MongoDB admin user (only on primary, after replica set is initiated)
   ansible.builtin.command: |
     mongosh admin --eval 'db.createUser({user: "{{ mongodb_admin_user }}", pwd: "{{ mongodb_admin_password }}", roles:[{role:"root",db:"admin"}]})'
   when:
-    - inventory_hostname == (groups['replicaset_' + mongodb_replicaset_name] | sort)[0]
+    - is_mongo_primary | default(false)
     - rs_initiate is succeeded
   register: create_admin
   changed_when: create_admin.rc == 0
