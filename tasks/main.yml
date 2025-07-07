@@ -1,10 +1,16 @@
 ---
-- name: Download MongoDB GPG key (binary format)
+- name: Download MongoDB GPG key (ASCII format)
   ansible.builtin.get_url:
-    url: https://pgp.mongodb.com/server-{{ mongodb_version }}.gpg
-    dest: /usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg
+    url: https://pgp.mongodb.com/server-{{ mongodb_version }}.asc
+    dest: /usr/share/keyrings/mongodb-server-{{ mongodb_version }}.asc
     mode: '0644'
     force: true
+
+- name: Convert MongoDB GPG key to binary format (dearmor)
+  ansible.builtin.command: >-
+    gpg --dearmor -o /usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg /usr/share/keyrings/mongodb-server-{{ mongodb_version }}.asc
+  args:
+    creates: /usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg
 
 - name: Add MongoDB repository
   ansible.builtin.apt_repository:
