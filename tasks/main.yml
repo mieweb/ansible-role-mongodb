@@ -58,6 +58,14 @@
     mode: '0400'
   when: hostvars[(groups['replicaset_' + mongodb_replicaset_name] | sort)[0]].mongodb_keyfile_content is defined
 
+- name: Configure logrotate
+  ansible.builtin.copy:
+    src: mongodb.logrotate
+    dest: /etc/logrotate.d/mongodb
+    owner: root
+    group: root
+    mode: '0644'
+
 - name: Configure mongod.conf
   ansible.builtin.template:
     src: mongod.conf.j2
